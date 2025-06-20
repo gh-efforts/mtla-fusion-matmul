@@ -38,6 +38,10 @@ fn find_mask(x: usize, y: usize, window: usize) -> u8 {
     if x_num % 4 == 0 {
         return 4;
     } else {
+        if x_num == not_in_vwindow {
+            return 2;
+        }
+
         return 0;
     }
 }
