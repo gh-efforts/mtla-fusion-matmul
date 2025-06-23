@@ -143,11 +143,11 @@ void mtla_matmul(
     cudaStream_t stream = reinterpret_cast<cudaStream_t>(stream_int);
 
     std::vector<Point> points = gen_point_list(row_num, window);
-    size_t points_len = points.size() * batch_size;
+    size_t total_points_len = points.size() * batch_size;
 
     size_t thread = 256;
-    size_t block = points_len / thread;
-    if (points_len % thread != 0) {
+    size_t block = total_points_len / thread;
+    if (total_points_len % thread != 0) {
         block += 1;
     }
 
