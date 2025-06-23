@@ -53,6 +53,10 @@ fn gen_point_list(mat_rows: usize, window: usize) -> Vec<((usize, usize), u8)> {
 
     for y in 0..mat_rows {
         for x in 0..mat_rows {
+            if x > y {
+                break;
+            }
+
             let mask = find_mask(x, y, window);
 
             if mask != 0 {
@@ -73,7 +77,13 @@ fn mtla_matmul(
     // ((x, y), mask)
     points: &[((usize, usize), u8)],
 ) {
-    let ((x, y), mask) = points[tid];
+    let point_idx = tid % points.len();
+    let batch_idx = tid / points.len();
+    let a = &a[batch_idx * row_num * col_num..(batch_idx + 1) * row_num * col_num];
+    let b = &b[batch_idx * row_num * col_num..(batch_idx + 1) * row_num * col_num];
+    let out = &mut out[batch_idx * row_num * row_num..(batch_idx + 1) * row_num * row_num];
+
+    let ((x, y), mask) = points[point_idx];
     let out_point = &mut out[y * row_num + x];
     let row = &a[y * col_num..y * col_num + col_num];
 
@@ -95,6 +105,30 @@ fn mtla_matmul(
 
 fn main() {
     let a = [
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
         1, 1, 1, 1,
         1, 1, 1, 1,
         1, 1, 1, 1,
@@ -147,22 +181,45 @@ fn main() {
         1, 1, 1, 1,
         1, 1, 1, 1,
         1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
     ];
     let b_ptr = b.as_slice();
 
     const T: usize = 24;
     const WINDOW: usize = 6;
 
-    let mut out = [0i32; T * T];
+    let mut out = [0i32; 2 * T * T];
     let out_ptr = out.as_mut_ptr() as usize;
     let out_len = out.len();
-
 
     let points = gen_point_list(T, WINDOW);
     let points = points.as_slice();
 
     rayon::scope(|s| {
-        for tid in 0..points.len() {
+        for tid in 0..points.len() * 2 {
             s.spawn(move |_| {
                 mtla_matmul(
                     a_ptr,
@@ -178,6 +235,15 @@ fn main() {
     });
 
     println!("out: ");
+    for i in 0..T {
+        for j in 0..T {
+            print!("{}, ", out[i * T + j]);
+        }
+        println!();
+    }
+
+    println!("============================================");
+    let out = &out[T * T..];
     for i in 0..T {
         for j in 0..T {
             print!("{}, ", out[i * T + j]);
