@@ -43,7 +43,7 @@ __global__ void mtla_matmul_kernel(
 
     __nv_bfloat16 out_point_tmp = __float2bfloat16(0.0f);
     for (size_t i = 0; i < col_num; i++) {
-        __nv_bfloat16 a_v = *(row + i);
+        __nv_bfloat16 a_v = row[i];
 
         if (mask == 1) {
             __nv_bfloat16 b_v = b_offset[x * col_num + i];
