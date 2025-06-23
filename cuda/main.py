@@ -17,12 +17,13 @@ if __name__ == '__main__':
     window = 6
     row = 24
     col = 4
+    batch_size = 2
 
-    matQ = torch.ones(2, row, col, device="cuda", dtype=torch.bfloat16)
-    matK = torch.ones(2, row, col, device="cuda", dtype=torch.bfloat16)
-    out = torch.zeros(2, row, row, device="cuda", dtype=torch.bfloat16)
+    matQ = torch.ones(batch_size, row, col, device="cuda", dtype=torch.bfloat16)
+    matK = torch.ones(batch_size, row, col, device="cuda", dtype=torch.bfloat16)
+    out = torch.zeros(batch_size, row, row, device="cuda", dtype=torch.bfloat16)
 
-    mtla.mtla_matmul(matQ.data_ptr(), matK.data_ptr(), out.data_ptr(), col, row, 2, window, torch.cuda.current_stream(device=None).cuda_stream)
+    mtla.mtla_matmul(matQ.data_ptr(), matK.data_ptr(), out.data_ptr(), col, row, batch_size, window, torch.cuda.current_stream(device=None).cuda_stream)
 
     out_fp32 = out.to(torch.float32)
     torch.set_printoptions(precision=3, sci_mode=False, linewidth=1000000,
