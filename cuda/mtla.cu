@@ -17,11 +17,12 @@ __global__ void mtla_matmul_kernel(
     size_t col_num,
     size_t row_num,
     const Point *points,
-    size_t points_len
+    size_t points_len,
+    size_t batch_size
 ) {
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (tid >= points_len) {
+    if (tid >= points_len * batch_size) {
         return;
     }
 
@@ -30,7 +31,7 @@ __global__ void mtla_matmul_kernel(
 
     const __nv_bfloat16 *a_offset = a + batch_idx * row_num * col_num;
     const __nv_bfloat16 *b_offset = b + batch_idx * row_num * col_num;
-    __nv_bfloat16 *out_offset = out + batch_idx * row_num * col_num;
+    __nv_bfloat16 *out_offset = out + batch_idx * row_num * row_num;
 
     const Point &point = points[point_idx];
     size_t x = point.x;
@@ -160,7 +161,8 @@ void mtla_matmul(
         col_num,
         row_num,
         d_points,
-        points.size()
+        points.size(),
+        batch_size
     );
     cudaFreeAsync(d_points, stream);
 }
