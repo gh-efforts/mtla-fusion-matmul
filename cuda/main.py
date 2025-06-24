@@ -23,6 +23,7 @@ if __name__ == '__main__':
     matK = torch.ones(batch_size, row, col, device="cuda", dtype=torch.bfloat16)
     out = torch.zeros(batch_size, row, row, device="cuda", dtype=torch.bfloat16)
 
+    # not thread safe
     mtla.mtla_matmul(matQ.data_ptr(), matK.data_ptr(), out.data_ptr(), col, row, batch_size, window, torch.cuda.current_stream(device=None).cuda_stream)
 
     out_fp32 = out.to(torch.float32)
