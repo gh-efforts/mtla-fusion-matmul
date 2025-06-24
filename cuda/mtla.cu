@@ -139,6 +139,7 @@ std::vector<Point> gen_point_list(size_t mat_rows, size_t window) {
 
 static CachedDevicePoints g_cached_points;
 
+// not thread safe
 void mtla_matmul(
     size_t a,
     size_t b,
