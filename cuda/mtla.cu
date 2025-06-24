@@ -10,6 +10,13 @@ struct Point {
     uint8_t mask;
 };
 
+struct CachedDevicePoints {
+    size_t size;
+    Point* d_points = nullptr;
+    size_t row_num = 0;
+    size_t window = 0;
+};
+
 __global__ void mtla_matmul_kernel(
     const __nv_bfloat16 *a,
     const __nv_bfloat16 *b,
@@ -130,6 +137,8 @@ std::vector<Point> gen_point_list(size_t mat_rows, size_t window) {
     return threads;
 }
 
+static CachedDevicePoints g_cached_points;
+
 void mtla_matmul(
     size_t a,
     size_t b,
@@ -142,8 +151,21 @@ void mtla_matmul(
 ) {
     cudaStream_t stream = reinterpret_cast<cudaStream_t>(stream_int);
 
-    std::vector<Point> points = gen_point_list(row_num, window);
-    size_t total_points_len = points.size() * batch_size;
+    if (g_cached_points.row_num != row_num || g_cached_points.window != window) {
+        if (g_cached_points.d_points) {
+            cudaFreeAsync(g_cached_points.d_points, stream);
+        }
+
+        std::vector<Point> points = gen_point_list(row_num, window);
+        g_cached_points.size = points.size();
+        g_cached_points.row_num = row_num;
+        g_cached_points.window = window;
+        g_cached_points.d_points = nullptr;
+
+        cudaMallocAsync(&g_cached_points.d_points, points.size() * sizeof(Point), stream);
+        cudaMemcpyAsync(g_cached_points.d_points, points.data(), points.size() * sizeof(Point), cudaMemcpyHostToDevice, stream);
+    }
+    size_t total_points_len = g_cached_points.size * batch_size;
 
     size_t thread = 256;
     size_t block = total_points_len / thread;
@@ -151,9 +173,8 @@ void mtla_matmul(
         block += 1;
     }
 
-    Point* d_points = nullptr;
-    cudaMallocAsync(&d_points, points.size() * sizeof(Point), stream);
-    cudaMemcpyAsync(d_points, points.data(), points.size() * sizeof(Point), cudaMemcpyHostToDevice, stream);
+    Point* d_points = g_cached_points.d_points;
+
     mtla_matmul_kernel<<<block, thread, 0, stream>>>(
         reinterpret_cast<const __nv_bfloat16*>(a),
         reinterpret_cast<const __nv_bfloat16*>(b),
@@ -161,10 +182,9 @@ void mtla_matmul(
         col_num,
         row_num,
         d_points,
-        points.size(),
+        g_cached_points.size,
         batch_size
     );
-    cudaFreeAsync(d_points, stream);
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
